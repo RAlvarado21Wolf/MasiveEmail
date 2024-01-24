@@ -1,0 +1,66 @@
+﻿<html>
+	<head>
+		<meta charset="utf-8">
+		<style type="text/css">
+			html {
+			  font-size: 15px;
+			  font-family: Helvetica, sans-serif;
+			}
+
+			@media (max-width: 1900px) {
+			  html { font-size: 15px; }			
+			}
+
+			@media (max-width: 1280px) {
+			  html { font-size: 15px; }			  
+			}
+
+			@media (max-width: 800px) {
+			  html { font-size: 10px; }			  
+			}			
+
+			@media (max-width: 480px) {
+			  html { font-size: 10px; }			  
+			}				
+ 		</style>
+	</head>
+	<body>
+		<div class="Contenedor">
+						
+			<a href="<%URLBase%>LineasCorporativas/public/Renovacion.aspx?ID=<%ID%>"><img src="cid:<%ImagenRenovacion%>" width="100%"/></a>
+			
+		</div>
+
+		<div class="Cuerpo">
+	        <p>Estimado(a) <%Usuario%>:</p>
+	        <p>Estamos en proceso de renovación de la línea telefónica <strong><%Celular%></strong>, la cual se ha puesto a su disposición dentro del plan corporativo de <strong><%Empresa%></strong>.</p>
+
+	        <p>Para renovar el plan es necesario que haga clic en el botón "<a href="<%URLBase%>LineasCorporativas/public/Renovacion.aspx?ID=<%ID%>">Renovar</a>" dentro de la imagen al inicio de este correo, el vínculo lo redirigirá al sitio en el que se muestran los detalles del plan que le ha sido asignado y donde además, podrá seleccionar el dispositivo y la forma de pago que se ajusten a sus necesidades, todo bajo las políticas de <strong>ASAZGUA</strong> (Adjuntas en este correo).</p>
+
+	        <p>Adjunto encontrará también un pequeño instructivo sobre el uso de la plataforma que se ha creado para administrar la renovación de las líneas telefónicas. Si tiene alguna duda o inconveniente puede comunicarse con el equipo de IT para recibir soporte.</p>
+
+	        <p>Observaciones:</p>
+	        <ul>
+	          <li>Los dispositivos y colores están sujetos a la disponibilidad de Claro</li>
+	          <li>En caso de que seleccione un dispositivo que no esté disponible al momento de confirmar con el proveedor, le enviaremos un correo para que seleccione un dispositivo distinto</li>
+	          <li>La fecha límite para seleccionar un dispositivo es el <b><%FechaLimiteRenovacion%></b>. Si no ha seleccionado un dispositivo para esta fecha, se le asignará uno de manera automática</li>
+	          <li>Las formas disponibles de pago son:</li>
+	          	<ul>
+	          		<li>
+	          			Contado : Emitir cheque a nombre de ASAZGUA y enviarlo a IT para completar el trámite
+	          		</li>
+	          		<li>
+	          			Descuento en Nómina (<%CantidadCuotas%> pagos)
+	          		</li>
+	          	</ul>
+	          <%TextoDevolucion%>
+	        </ul>
+
+	        <p><strong>Importante: Este correo y su contenido es personal, no debe compartirlo con nadie. </strong> </p>
+	        <p>Saludos,</p>
+	        <p>Equipo de IT de ASAZGUA</p>
+			
+		</div>
+	</body>
+	<footer></footer>
+</html>
