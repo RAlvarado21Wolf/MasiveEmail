@@ -7,12 +7,16 @@ using System.Net;
 using System.Net.Mail;
 using System.ComponentModel;
 using System.Threading;
+using System.IO;
+using System.Web;
 
 namespace CorreoMasivo
 {
     public class UtilesEmail
     {
         static bool mailSend = false;
+
+        public static string ContentFilePath { get; private set; }
 
         private static void SendCompletedCallback(object sender, AsyncCompletedEventArgs e, int pdatos) {
 
@@ -29,7 +33,7 @@ namespace CorreoMasivo
                 UpdateEstadoEmail(pdatos, false, e.Error.ToString(), 0);
             }
             else {
-                
+
                 UpdateEstadoEmail(pdatos, true, "Actualizado", 1);
                 // datos.Listado();
 
@@ -50,23 +54,13 @@ namespace CorreoMasivo
                     connection.Open();
                     //Parametros de llamada y envio de Email
                     SqlCommand cmd = connection.CreateCommand();
-                    string consultaVerificacion = @"SELECT 
-                                                    E.ToAddress, 
-                                                    E.FromAddress, 
-                                                    E.Subject, 
-                                                    E.IsBodyHtml, 
-                                                    E.Body, 
-                                                    E.EMEmailTemplateID, 
-                                                    S.SmtpServerName 
-                                                    FROM EMEmail E 
-                                                    LEFT JOIN EMSmtpServer S 
-                                                    ON E.EMSmtpServerID = S.EMSmtpServerID 
-                                                    WHERE E.EMEmailID = @EMEmailID;";                   
+                    string consultaVerificacion = @"SELECT E.ToAddress, E.FromAddress, E.Subject, E.IsBodyHtml, E.Body, E.EMEmailTemplateID, S.SmtpServerName FROM EMEmail E INNER JOIN EMSmtpServer S ON E.EMSmtpServerID = S.EMSmtpServerID Left JOIN EMEmailAttachment EA ON E.EMEmailID = EA.EMEmailID WHERE E.EMEmailID = @EMEmailID;";                   
                     cmd.CommandText = consultaVerificacion;
                     // cmd.Parameters.Add("@EMEmailID", SqlDbType.Int).Value = EmailID;
                     cmd.Parameters.AddWithValue("@EMEmailID",EmailID);
                     SqlDataReader DE = cmd.ExecuteReader();
-                    if (DE.Read()) {
+                    if (DE.Read()) 
+                    {
 
                         datos.EmailID = EmailID; 
                         datos.Destinatario = DE.IsDBNull(0) ? "" : DE.GetString(0);
@@ -76,7 +70,7 @@ namespace CorreoMasivo
                         datos.Cuerpo = DE.IsDBNull(4) ? "" :  DE.GetString(4);
                         IDTemplate = DE.IsDBNull(5) ? 0 : DE.GetInt32(5);
                         datos.Smtp = DE.IsDBNull(6) ? "" : DE.GetString(6);
-                        
+
                         DE.Close();
 
                         string consultaReplacement =   @"SELECT ReplacementKey, ReplacementValue FROM EMEmailTemplateReplacement WHERE EMEmailTemplateID = @EMEmailTemplateID2 AND EMEmailID = @EMEmailID2;";
@@ -86,16 +80,13 @@ namespace CorreoMasivo
                         SqlDataReader DR = cmd.ExecuteReader();
                         datos.ListaPalabras = new ListDictionary();
                         while (DR.Read()){
-
                             Console.WriteLine(DR[0] + ", " + DR[1]);
                             var key = DR.GetString(0);
                             var value = DR.GetString(1);
                             datos.ListaPalabras.Add(key, value);
-                                
                         }
 
                         DR.Close();
-
                     }
                 }
             }
@@ -168,16 +159,28 @@ namespace CorreoMasivo
             string msge = "";
             try
             {
-            MailMessage mail = new MailMessage();
-            mail.From = new MailAddress(param.CorreoOrigen, param.Asunto);
-            mail.To.Add(param.Destinatario);
-            if (param.ListaPalabras != null)
-            {
-                foreach (DictionaryEntry replacement in param.ListaPalabras)
+
+                MailMessage mail = new MailMessage();
+                mail.From = new MailAddress(param.CorreoOrigen, param.Asunto);
+                mail.To.Add(param.Destinatario);
+
+                if (File.Exists(HttpContext.Current.Server.MapPath(ContentFilePath)))
                 {
-                    param.Cuerpo = param.Cuerpo.Replace(replacement.Key.ToString(), replacement.Value.ToString());
+                    Attachment attachment = new Attachment(HttpContext.Current.Server.MapPath(ContentFilePath));
+                    if (attachment != null)
+                    {
+                        mail.Attachments.Add(attachment);
+                    }
                 }
-            }
+
+                if (param.ListaPalabras != null)
+                {
+                    foreach (DictionaryEntry replacement in param.ListaPalabras)
+                    {
+                        param.Cuerpo = param.Cuerpo.Replace(replacement.Key.ToString(), replacement.Value.ToString());
+                    }
+                }
+
                 mail.Subject = param.Asunto;
                 mail.Body = param.Cuerpo;
                 mail.IsBodyHtml = true;

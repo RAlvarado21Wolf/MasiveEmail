@@ -42,6 +42,8 @@ namespace CorreoMasivo
             set;
         }
 
+        
+
         public DatosEmail(int IDEmail, string destinatario, string correoOrigen, string asunto, string cuerpo, ListDictionary replacements, string smtp, bool BodyHTML)
         {
             EmailID = IDEmail;
