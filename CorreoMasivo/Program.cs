@@ -1,12 +1,4 @@
-﻿using EnviarMail;
-using System;
-using System.Collections.Generic;
-using System.Collections.Specialized;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Web.UI.WebControls;
+﻿using System;
 
 namespace CorreoMasivo
 {
@@ -16,7 +8,7 @@ namespace CorreoMasivo
         static void Main(string[] args)
         {
             DatosEmail datosEmail = new DatosEmail();
-            foreach (int Mail in UtilesEmail.Listado())
+            foreach (int Mail in UtilesEmail.GetListadoCorreosPendientes())
             {
 
                 Console.WriteLine(Mail);

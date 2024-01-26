@@ -1,25 +1,12 @@
-﻿using Microsoft.SqlServer.Server;
-using System.Data.Sql;
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
-using System.Configuration;
-using System.Data;
 using System.Data.SqlClient;
-using System.IO;
 using System.Net;
-using System.Net.Configuration;
 using System.Net.Mail;
-using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices.WindowsRuntime;
-using System.Web;
-using System.Web.UI;
-using System.Web.UI.WebControls;
-using System.Threading.Tasks;
-using System.Net.Http;
 using System.ComponentModel;
-using System.Deployment.Internal;
+using System.Threading;
 
 namespace CorreoMasivo
 {
@@ -34,16 +21,16 @@ namespace CorreoMasivo
 
             if (e.Cancelled) {
                 Console.WriteLine("[{0}] Send canceled.", token);
-                Update(pdatos, 0, token, 0);
+                UpdateEstadoEmail(pdatos, false, token, 0);
             }
             if (e.Error != null)
             {
                 Console.WriteLine("[{0}] {1}", token, e.Error.ToString());
-                Update(pdatos, 0, e.Error.ToString(), 0);
+                UpdateEstadoEmail(pdatos, false, e.Error.ToString(), 0);
             }
             else {
                 
-                Update(pdatos, 1, "Actualizado", 1);
+                UpdateEstadoEmail(pdatos, true, "Actualizado", 1);
                 // datos.Listado();
 
             }
@@ -63,7 +50,18 @@ namespace CorreoMasivo
                     connection.Open();
                     //Parametros de llamada y envio de Email
                     SqlCommand cmd = connection.CreateCommand();
-                    string consultaVerificacion = @"SELECT E.ToAddress, E.FromAddress, E.Subject, E.IsBodyHtml, E.Body, E.EMEmailTemplateID, S.SmtpServerName FROM  EMEmail E JOIN EMSmtpServer S ON E.EMSmtpServerID = S.EMSmtpServerID WHERE E.EMEmailID = @EMEmailID;";                   
+                    string consultaVerificacion = @"SELECT 
+                                                    E.ToAddress, 
+                                                    E.FromAddress, 
+                                                    E.Subject, 
+                                                    E.IsBodyHtml, 
+                                                    E.Body, 
+                                                    E.EMEmailTemplateID, 
+                                                    S.SmtpServerName 
+                                                    FROM EMEmail E 
+                                                    LEFT JOIN EMSmtpServer S 
+                                                    ON E.EMSmtpServerID = S.EMSmtpServerID 
+                                                    WHERE E.EMEmailID = @EMEmailID;";                   
                     cmd.CommandText = consultaVerificacion;
                     // cmd.Parameters.Add("@EMEmailID", SqlDbType.Int).Value = EmailID;
                     cmd.Parameters.AddWithValue("@EMEmailID",EmailID);
@@ -110,7 +108,7 @@ namespace CorreoMasivo
 
         }
 
-        internal static void Update(int ID, byte Envio, string Mensaje, int Procesado)
+        public static void UpdateEstadoEmail(int ID, bool Envio, string Mensaje, int Procesado)
         {
 
             try
@@ -139,7 +137,7 @@ namespace CorreoMasivo
             }
         }
 
-        public static List<int> Listado()
+        public static List<int> GetListadoCorreosPendientes()
         {
             List<int> Mail = new List<int>();
             try
@@ -149,16 +147,14 @@ namespace CorreoMasivo
                 {
                     connection.Open();
                     SqlCommand cmd = connection.CreateCommand();
-                    string consultaEmail = @"SELECT EMEmailID FROM EMEmail WHERE Enviado IS NULL or Enviado = 0 and Procesar = 1;";
+                    string consultaEmail = @"SELECT EMEmailID FROM EMEmail WHERE (Enviado IS NULL OR Enviado = 0) AND Procesar = 1;";
                     cmd.CommandText = consultaEmail;
                     SqlDataReader ID = cmd.ExecuteReader();
                     while (ID.Read())
                     {
                         Mail.Add(Convert.ToInt32(ID[0].ToString()));
                     }
-
                 }
-
             }
             catch (Exception ex)
             {
@@ -167,68 +163,20 @@ namespace CorreoMasivo
             return Mail;
         }
 
-        public string EnviosPendientes()
-        {
-
-            var resultado = "";
-            try
-            {
-
-                string connect = "server=DESKTOP-7KDBKTG\\SQLEXPRESS; database=master; integrated security=true";
-                using (SqlConnection connection = new SqlConnection(connect))
-                {
-                    connection.Open();
-                    SqlCommand cmd = connection.CreateCommand();
-                    string consultaEmail = @"SELECT EMEmailID FROM EMEmail WHERE Enviado IS NULL or Enviado = 0 and Procesar = 1;";
-                    cmd.CommandText = consultaEmail;
-
-                    using (SqlDataReader reader = cmd.ExecuteReader())
-                    {
-                        if (reader.HasRows)
-                        {
-                            while (reader.Read())
-                            {
-                                var id = (int)reader["EMEmailID"];
-                                Console.WriteLine("Correo enviado: " + id);
-                                UtilesEmail.sendMail(UtilesEmail.getDatosDB(id));
-                            }
-
-                            resultado = "Correos faltantes enviados";
-                        }
-                        else
-                        {
-                            resultado = "Ya se han enviado todos los correos";
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-
-                Console.WriteLine("No existen registros para mostrar: " + ex.Message);
-
-            }
-
-            return resultado;
-        }
-
         public static string sendMail(DatosEmail param)
         {
             string msge = "";
             try
             {
-                
             MailMessage mail = new MailMessage();
             mail.From = new MailAddress(param.CorreoOrigen, param.Asunto);
             mail.To.Add(param.Destinatario);
-
             if (param.ListaPalabras != null)
             {
                 foreach (DictionaryEntry replacement in param.ListaPalabras)
                 {
                     param.Cuerpo = param.Cuerpo.Replace(replacement.Key.ToString(), replacement.Value.ToString());
                 }
-
             }
                 mail.Subject = param.Asunto;
                 mail.Body = param.Cuerpo;
@@ -238,17 +186,13 @@ namespace CorreoMasivo
                 client.EnableSsl = true;
                 client.SendCompleted += (sender, e) => SendCompletedCallback(sender, e, param.EmailID);
                 client.SendAsync(mail, "Mensaje");
-                
-
             }
             catch (Exception ex)
             {
                 msge = ex.Message + ". Por favor verifica tu conexión a internet y que tus datos sean correctos e intenta nuevamente.";
             }
-            
-            Console.ReadLine();
+            Thread.Sleep(2000);
             return msge;
-            
         }
 
     }
