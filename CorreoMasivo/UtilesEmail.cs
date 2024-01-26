@@ -27,28 +27,6 @@ namespace CorreoMasivo
     {
         static bool mailSend = false;
 
-        /* public static DatosEmail getDatos()
-        {
-            string from = "testeoprueba96@gmail.com";
-            string displayName = "Testeo";
-            string bodyFilePath = "C:\\Users\\RICARDO\\Downloads\\CorreoMasivo (1)\\CorreoMasivo\\CorreoMasivo\\EmailTemplates\\HolaUsuario.txt";
-            string addressFilePath = "C:\\Users\\RICARDO\\Downloads\\CorreoMasivo (1)\\CorreoMasivo\\CorreoMasivo\\documentos\\Listado de Destinatarios.txt";
-            string descripcion = File.ReadAllText(bodyFilePath);
-            string address = File.ReadAllText(addressFilePath);
-            string smtp = "smtp.gmail.com";
-            bool htmlBody = true;
-            ListDictionary ListaPalabras = new ListDictionary{
-                { "<%Usuario%>", "Usuario Prueba - 1" },
-                { "<%Celular%>", "12345678 - Prueba"},
-                { "<%Empresa%>", "Empresa Prueba" },
-                { "<%FechaLimiteRenovacion%>", "01/02/03"},
-                { "<%CantidadCuotas%>", "123"},
-                { "<%TextoDevolucion%>", "Reporte de Correo"}
-            };
-            DatosEmail datos = new DatosEmail(1, address, from, displayName, descripcion, ListaPalabras, smtp, htmlBody);
-            return datos;
-        }*/
-
         private static void SendCompletedCallback(object sender, AsyncCompletedEventArgs e, int pdatos) {
 
             DatosEmail datos = new DatosEmail();
@@ -56,16 +34,16 @@ namespace CorreoMasivo
 
             if (e.Cancelled) {
                 Console.WriteLine("[{0}] Send canceled.", token);
-                datos.Update(pdatos, 0, token, 0);
+                Update(pdatos, 0, token, 0);
             }
             if (e.Error != null)
             {
                 Console.WriteLine("[{0}] {1}", token, e.Error.ToString());
-                datos.Update(pdatos, 0, e.Error.ToString(), 0);
+                Update(pdatos, 0, e.Error.ToString(), 0);
             }
             else {
                 
-                datos.Update(pdatos, 1, "Actualizado", 1);
+                Update(pdatos, 1, "Actualizado", 1);
                 // datos.Listado();
 
             }
@@ -105,8 +83,6 @@ namespace CorreoMasivo
 
                         string consultaReplacement =   @"SELECT ReplacementKey, ReplacementValue FROM EMEmailTemplateReplacement WHERE EMEmailTemplateID = @EMEmailTemplateID2 AND EMEmailID = @EMEmailID2;";
                         cmd.CommandText = consultaReplacement;
-                        // cmd.Parameters.Add("@EMEmailTemplateID2", SqlDbType.Int).Value = 1;
-                        // cmd.Parameters.Add("@EMEmailID2", SqlDbType.Int).Value = EmailID;
                         cmd.Parameters.AddWithValue("@EMEmailTemplateID2", IDTemplate);
                         cmd.Parameters.AddWithValue("@EMEmailID2", EmailID);
                         SqlDataReader DR = cmd.ExecuteReader();
@@ -134,65 +110,107 @@ namespace CorreoMasivo
 
         }
 
-        /* public static DatosEmail getDatosDBPendientes(int EmailID)
+        internal static void Update(int ID, byte Envio, string Mensaje, int Procesado)
         {
-            DatosEmail datos = new DatosEmail();
+
             try
             {
                 string connect = "server=DESKTOP-7KDBKTG\\SQLEXPRESS; database=master; integrated security=true";
                 using (SqlConnection connection = new SqlConnection(connect))
                 {
-                    Int32 IDTemplate;
-                    // Conexion Aperturada
                     connection.Open();
-                    // Parametros de llamada y envio de Email
                     SqlCommand cmd = connection.CreateCommand();
-                    string consultaVerificacion = @"SELECT E.ToAddress, E.FromAddress, E.Subject, E.IsBodyHtml, E.Body, E.EMEmailTemplateID, S.SmtpServerName FROM EMEmail E JOIN EMSmtpServer S ON E.EMSmtpServerID = S.EMSmtpServerID WHERE E.EMEmailID = @EMEmailID AND (E.Enviado IS NULL OR E.Enviado = 0);";
-                    cmd.CommandText = consultaVerificacion;
-                    cmd.Parameters.AddWithValue("@EMEmailID", EmailID);
-                    SqlDataReader DE = cmd.ExecuteReader();
-                    if (DE.Read())
+                    string actualizacionEmail = @"UPDATE EMEmail SET FechaProcesado = @FechaProcesado, Enviado = @Enviado, MensajeResultado = @MensajeResultado WHERE EMEmailID = @EMEmailID;";
+                    cmd.CommandText = actualizacionEmail;
+                    cmd.Parameters.AddWithValue("@EMEmailID", ID);
+                    cmd.Parameters.AddWithValue("@FechaProcesado", DateTime.Now);
+                    cmd.Parameters.AddWithValue("@Enviado", Envio);
+                    cmd.Parameters.AddWithValue("@MensajeResultado", Mensaje);
+
+                    int respuesta = (int)cmd.ExecuteNonQuery();
+                    connection.Close();
+                }
+            }
+            catch (Exception ex)
+            {
+
+                Console.WriteLine("Error: " + ex.Message);
+
+            }
+        }
+
+        public static List<int> Listado()
+        {
+            List<int> Mail = new List<int>();
+            try
+            {
+                string connect = "server=DESKTOP-7KDBKTG\\SQLEXPRESS; database=master; integrated security=true";
+                using (SqlConnection connection = new SqlConnection(connect))
+                {
+                    connection.Open();
+                    SqlCommand cmd = connection.CreateCommand();
+                    string consultaEmail = @"SELECT EMEmailID FROM EMEmail WHERE Enviado IS NULL or Enviado = 0 and Procesar = 1;";
+                    cmd.CommandText = consultaEmail;
+                    SqlDataReader ID = cmd.ExecuteReader();
+                    while (ID.Read())
                     {
+                        Mail.Add(Convert.ToInt32(ID[0].ToString()));
+                    }
 
-                        datos.EmailID = EmailID;
-                        datos.Destinatario = DE.IsDBNull(0) ? "" : DE.GetString(0);
-                        datos.CorreoOrigen = DE.IsDBNull(1) ? "" : DE.GetString(1);
-                        datos.Asunto = DE.IsDBNull(2) ? "" : DE.GetString(2);
-                        datos.bodyHtml = DE.IsDBNull(3) ? false : DE.GetBoolean(3);
-                        datos.Cuerpo = DE.IsDBNull(4) ? "" : DE.GetString(4);
-                        IDTemplate = DE.IsDBNull(5) ? 0 : DE.GetInt32(5);
-                        datos.Smtp = DE.IsDBNull(6) ? "" : DE.GetString(6);
+                }
 
-                        DE.Close();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("No existen registros para mostrar: " + ex.Message);
+            }
+            return Mail;
+        }
 
-                        string consultaReplacement = @"SELECT ReplacementKey, ReplacementValue FROM EMEmailTemplateReplacement WHERE EMEmailTemplateID = @EMEmailTemplateID2 AND EMEmailID = @EMEmailID2;";
-                        cmd.CommandText = consultaReplacement;
-                        cmd.Parameters.AddWithValue("@EMEmailTemplateID2", IDTemplate);
-                        cmd.Parameters.AddWithValue("@EMEmailID2", EmailID);
-                        SqlDataReader DR = cmd.ExecuteReader();
-                        datos.ListaPalabras = new ListDictionary();
-                        while (DR.Read())
+        public string EnviosPendientes()
+        {
+
+            var resultado = "";
+            try
+            {
+
+                string connect = "server=DESKTOP-7KDBKTG\\SQLEXPRESS; database=master; integrated security=true";
+                using (SqlConnection connection = new SqlConnection(connect))
+                {
+                    connection.Open();
+                    SqlCommand cmd = connection.CreateCommand();
+                    string consultaEmail = @"SELECT EMEmailID FROM EMEmail WHERE Enviado IS NULL or Enviado = 0 and Procesar = 1;";
+                    cmd.CommandText = consultaEmail;
+
+                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        if (reader.HasRows)
                         {
+                            while (reader.Read())
+                            {
+                                var id = (int)reader["EMEmailID"];
+                                Console.WriteLine("Correo enviado: " + id);
+                                UtilesEmail.sendMail(UtilesEmail.getDatosDB(id));
+                            }
 
-                            Console.WriteLine(DR[0] + ", " + DR[1]);
-                            var key = DR.GetString(0);
-                            var value = DR.GetString(1);
-                            datos.ListaPalabras.Add(key, value);
-
+                            resultado = "Correos faltantes enviados";
                         }
-
-                        DR.Close();
-
+                        else
+                        {
+                            resultado = "Ya se han enviado todos los correos";
+                        }
                     }
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Error: " + ex.Message);
+
+                Console.WriteLine("No existen registros para mostrar: " + ex.Message);
+
             }
 
-            return datos;
-        }*/
+            return resultado;
+        }
 
         public static string sendMail(DatosEmail param)
         {
@@ -212,27 +230,25 @@ namespace CorreoMasivo
                 }
 
             }
-
                 mail.Subject = param.Asunto;
                 mail.Body = param.Cuerpo;
                 mail.IsBodyHtml = true;
                 SmtpClient client = new SmtpClient(param.Smtp, 587);
                 client.Credentials = new NetworkCredential(param.CorreoOrigen, "miofqxyvyamwxudi");
                 client.EnableSsl = true;
-                // client.Timeout = 100000;
-                // client.DeliveryMethod = SmtpDeliveryMethod.Network;
-                // client.UseDefaultCredentials = false;
                 client.SendCompleted += (sender, e) => SendCompletedCallback(sender, e, param.EmailID);
-                Console.ReadLine();
                 client.SendAsync(mail, "Mensaje");
                 
+
             }
             catch (Exception ex)
             {
                 msge = ex.Message + ". Por favor verifica tu conexión a internet y que tus datos sean correctos e intenta nuevamente.";
             }
-
+            
+            Console.ReadLine();
             return msge;
+            
         }
 
     }

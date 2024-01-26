@@ -15,9 +15,8 @@ namespace CorreoMasivo
 
         static void Main(string[] args)
         {
-            // obtencion de parametros para email
             DatosEmail datosEmail = new DatosEmail();
-            foreach (int Mail in datosEmail.Listado())
+            foreach (int Mail in UtilesEmail.Listado())
             {
 
                 Console.WriteLine(Mail);
