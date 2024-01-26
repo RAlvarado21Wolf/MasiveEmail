@@ -49,14 +49,10 @@ namespace CorreoMasivo
             return datos;
         }*/
 
-        
-
         private static void SendCompletedCallback(object sender, AsyncCompletedEventArgs e, int pdatos) {
 
             DatosEmail datos = new DatosEmail();
-            String token = (string)e.UserState;
-
-            Console.Clear();
+            String token = (String)e.UserState;
 
             if (e.Cancelled) {
                 Console.WriteLine("[{0}] Send canceled.", token);
@@ -70,8 +66,7 @@ namespace CorreoMasivo
             else {
                 
                 datos.Update(pdatos, 1, "Actualizado", 1);
-                datos.Listado();
-                datos.EnviosPendientes();
+                // datos.Listado();
 
             }
             mailSend = true;
@@ -84,15 +79,16 @@ namespace CorreoMasivo
             {
                 string connect = "server=DESKTOP-7KDBKTG\\SQLEXPRESS; database=master; integrated security=true";
                 using (SqlConnection connection = new SqlConnection(connect))
-                { 
+                {
+                    Int32 IDTemplate;
                     // Conexion Aperturada
                     connection.Open();
-
                     //Parametros de llamada y envio de Email
                     SqlCommand cmd = connection.CreateCommand();
-                    string consultaEmail = @"SELECT ToAddress, FromAddress, Subject, IsBodyHtml, Body FROM EMEmail WHERE EMEmailID = @EMEmailID;";
-                    cmd.CommandText = consultaEmail;
-                    cmd.Parameters.Add("@EMEmailID", SqlDbType.Int).Value = EmailID;
+                    string consultaVerificacion = @"SELECT E.ToAddress, E.FromAddress, E.Subject, E.IsBodyHtml, E.Body, E.EMEmailTemplateID, S.SmtpServerName FROM  EMEmail E JOIN EMSmtpServer S ON E.EMSmtpServerID = S.EMSmtpServerID WHERE E.EMEmailID = @EMEmailID;";                   
+                    cmd.CommandText = consultaVerificacion;
+                    // cmd.Parameters.Add("@EMEmailID", SqlDbType.Int).Value = EmailID;
+                    cmd.Parameters.AddWithValue("@EMEmailID",EmailID);
                     SqlDataReader DE = cmd.ExecuteReader();
                     if (DE.Read()) {
 
@@ -102,45 +98,32 @@ namespace CorreoMasivo
                         datos.Asunto = DE.IsDBNull(2) ? "" : DE.GetString(2);
                         datos.bodyHtml = DE.IsDBNull(3) ? false : DE.GetBoolean(3);
                         datos.Cuerpo = DE.IsDBNull(4) ? "" :  DE.GetString(4);
-
+                        IDTemplate = DE.IsDBNull(5) ? 0 : DE.GetInt32(5);
+                        datos.Smtp = DE.IsDBNull(6) ? "" : DE.GetString(6);
+                        
                         DE.Close();
 
-                        string consultaSMTP =  @"SELECT SmtpServerName FROM EMSmtpServer WHERE EMSmtpServerID = @EMSmtpServerID;";
+                        string consultaReplacement =   @"SELECT ReplacementKey, ReplacementValue FROM EMEmailTemplateReplacement WHERE EMEmailTemplateID = @EMEmailTemplateID2 AND EMEmailID = @EMEmailID2;";
+                        cmd.CommandText = consultaReplacement;
+                        // cmd.Parameters.Add("@EMEmailTemplateID2", SqlDbType.Int).Value = 1;
+                        // cmd.Parameters.Add("@EMEmailID2", SqlDbType.Int).Value = EmailID;
+                        cmd.Parameters.AddWithValue("@EMEmailTemplateID2", IDTemplate);
+                        cmd.Parameters.AddWithValue("@EMEmailID2", EmailID);
+                        SqlDataReader DR = cmd.ExecuteReader();
+                        datos.ListaPalabras = new ListDictionary();
+                        while (DR.Read()){
 
-                        cmd.CommandText = consultaSMTP;
-                        cmd.Parameters.Add("@EMSmtpServerID", SqlDbType.Int).Value = 2;
-
-                        SqlDataReader DS = cmd.ExecuteReader();
-
-                        if (DS.Read()) {
-
-                            datos.Smtp = DS.IsDBNull(0) ? "" : DS.GetString(0);
-
-                            DS.Close();
-
-                            string consultaReplacement =   @"SELECT ReplacementKey, ReplacementValue FROM EMEmailTemplateReplacement WHERE EMEmailTemplateID = @EMEmailTemplateID2 AND EMEmailID = @EMEmailID2;";
-
-                            cmd.CommandText = consultaReplacement;
-                            cmd.Parameters.Add("@EMEmailTemplateID2", SqlDbType.Int).Value = 1;
-                            cmd.Parameters.Add("@EMEmailID2", SqlDbType.Int).Value = EmailID;
-
-                            SqlDataReader DR = cmd.ExecuteReader();
-
-                            datos.ListaPalabras = new ListDictionary();
-
-                            while (DR.Read()){
-
-                                Console.WriteLine(DR[0] + ", " + DR[1]);
-                                var key = DR.GetString(0);
-                                    var value = DR.GetString(1);
-                                    datos.ListaPalabras.Add(key, value);
-                                }
-
-                                DR.Close();
-                            }
+                            Console.WriteLine(DR[0] + ", " + DR[1]);
+                            var key = DR.GetString(0);
+                            var value = DR.GetString(1);
+                            datos.ListaPalabras.Add(key, value);
+                                
                         }
+
+                        DR.Close();
+
                     }
-                
+                }
             }
             catch (Exception ex)
             {
@@ -150,6 +133,66 @@ namespace CorreoMasivo
             return datos;
 
         }
+
+        /* public static DatosEmail getDatosDBPendientes(int EmailID)
+        {
+            DatosEmail datos = new DatosEmail();
+            try
+            {
+                string connect = "server=DESKTOP-7KDBKTG\\SQLEXPRESS; database=master; integrated security=true";
+                using (SqlConnection connection = new SqlConnection(connect))
+                {
+                    Int32 IDTemplate;
+                    // Conexion Aperturada
+                    connection.Open();
+                    // Parametros de llamada y envio de Email
+                    SqlCommand cmd = connection.CreateCommand();
+                    string consultaVerificacion = @"SELECT E.ToAddress, E.FromAddress, E.Subject, E.IsBodyHtml, E.Body, E.EMEmailTemplateID, S.SmtpServerName FROM EMEmail E JOIN EMSmtpServer S ON E.EMSmtpServerID = S.EMSmtpServerID WHERE E.EMEmailID = @EMEmailID AND (E.Enviado IS NULL OR E.Enviado = 0);";
+                    cmd.CommandText = consultaVerificacion;
+                    cmd.Parameters.AddWithValue("@EMEmailID", EmailID);
+                    SqlDataReader DE = cmd.ExecuteReader();
+                    if (DE.Read())
+                    {
+
+                        datos.EmailID = EmailID;
+                        datos.Destinatario = DE.IsDBNull(0) ? "" : DE.GetString(0);
+                        datos.CorreoOrigen = DE.IsDBNull(1) ? "" : DE.GetString(1);
+                        datos.Asunto = DE.IsDBNull(2) ? "" : DE.GetString(2);
+                        datos.bodyHtml = DE.IsDBNull(3) ? false : DE.GetBoolean(3);
+                        datos.Cuerpo = DE.IsDBNull(4) ? "" : DE.GetString(4);
+                        IDTemplate = DE.IsDBNull(5) ? 0 : DE.GetInt32(5);
+                        datos.Smtp = DE.IsDBNull(6) ? "" : DE.GetString(6);
+
+                        DE.Close();
+
+                        string consultaReplacement = @"SELECT ReplacementKey, ReplacementValue FROM EMEmailTemplateReplacement WHERE EMEmailTemplateID = @EMEmailTemplateID2 AND EMEmailID = @EMEmailID2;";
+                        cmd.CommandText = consultaReplacement;
+                        cmd.Parameters.AddWithValue("@EMEmailTemplateID2", IDTemplate);
+                        cmd.Parameters.AddWithValue("@EMEmailID2", EmailID);
+                        SqlDataReader DR = cmd.ExecuteReader();
+                        datos.ListaPalabras = new ListDictionary();
+                        while (DR.Read())
+                        {
+
+                            Console.WriteLine(DR[0] + ", " + DR[1]);
+                            var key = DR.GetString(0);
+                            var value = DR.GetString(1);
+                            datos.ListaPalabras.Add(key, value);
+
+                        }
+
+                        DR.Close();
+
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error: " + ex.Message);
+            }
+
+            return datos;
+        }*/
 
         public static string sendMail(DatosEmail param)
         {
@@ -173,18 +216,15 @@ namespace CorreoMasivo
                 mail.Subject = param.Asunto;
                 mail.Body = param.Cuerpo;
                 mail.IsBodyHtml = true;
-
-                SmtpClient client = new SmtpClient("smtp.gmail.com", 587);
+                SmtpClient client = new SmtpClient(param.Smtp, 587);
                 client.Credentials = new NetworkCredential(param.CorreoOrigen, "miofqxyvyamwxudi");
                 client.EnableSsl = true;
                 // client.Timeout = 100000;
                 // client.DeliveryMethod = SmtpDeliveryMethod.Network;
                 // client.UseDefaultCredentials = false;
                 client.SendCompleted += (sender, e) => SendCompletedCallback(sender, e, param.EmailID);
-                client.SendAsync(mail, "Mensaje");
-                
-                Console.WriteLine("Presiona Enter para continuar...");
                 Console.ReadLine();
+                client.SendAsync(mail, "Mensaje");
                 
             }
             catch (Exception ex)
@@ -192,7 +232,6 @@ namespace CorreoMasivo
                 msge = ex.Message + ". Por favor verifica tu conexión a internet y que tus datos sean correctos e intenta nuevamente.";
             }
 
-            Console.ReadLine();
             return msge;
         }
 

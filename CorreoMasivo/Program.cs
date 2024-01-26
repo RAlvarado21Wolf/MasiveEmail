@@ -16,16 +16,16 @@ namespace CorreoMasivo
         static void Main(string[] args)
         {
             // obtencion de parametros para email
-            DatosEmail datosEmail = UtilesEmail.getDatosDB(3);
+            DatosEmail datosEmail = new DatosEmail();
+            foreach (int Mail in datosEmail.Listado())
+            {
 
-            // envio de email
-            UtilesEmail.sendMail(datosEmail);
+                Console.WriteLine(Mail);
+                DatosEmail datos = UtilesEmail.getDatosDB(Mail);
+                UtilesEmail.sendMail(datos);
 
-            // DatosEmail Funciones = new DatosEmail();
-
-            //Funciones.Listado();
+            }
 
         }
-        
     }
 }

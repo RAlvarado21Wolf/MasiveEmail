@@ -79,11 +79,18 @@ namespace CorreoMasivo
                     SqlCommand cmd = connection.CreateCommand();
                     string actualizacionEmail = @"UPDATE EMEmail SET FechaProcesado = @FechaProcesado, Enviado = @Enviado, MensajeResultado = @MensajeResultado WHERE EMEmailID = @EMEmailID;";
                     cmd.CommandText = actualizacionEmail;
-                    cmd.Parameters.Add("@EMEmailID", SqlDbType.Int).Value = ID;
-                    cmd.Parameters.Add("@FechaProcesado", SqlDbType.DateTime).Value = DateTime.Now;
-                    cmd.Parameters.Add("@Enviado", SqlDbType.Bit).Value = Envio;
-                    cmd.Parameters.Add("@MensajeResultado", SqlDbType.VarChar).Value = Mensaje;
+                    //cmd.Parameters.Add("@EMEmailID", SqlDbType.Int).Value = ID;
+                    //cmd.Parameters.Add("@FechaProcesado", SqlDbType.DateTime).Value = DateTime.Now;
+                    //cmd.Parameters.Add("@Enviado", SqlDbType.Bit).Value = Envio;
+                    //cmd.Parameters.Add("@MensajeResultado", SqlDbType.VarChar).Value = Mensaje;
+
+                    cmd.Parameters.AddWithValue("@EMEmailID", ID);
+                    cmd.Parameters.AddWithValue("@FechaProcesado", DateTime.Now);
+                    cmd.Parameters.AddWithValue("@Enviado", Envio);
+                    cmd.Parameters.AddWithValue("@MensajeResultado", Mensaje);
+
                     int respuesta = (int)cmd.ExecuteNonQuery();
+                    connection.Close();
                 }
             }
             catch (Exception ex){
@@ -99,31 +106,25 @@ namespace CorreoMasivo
         //Lista de los que no han sido enviados o que no tengan
         //Traer solo los registros de ID de los usuarios que no tengan un correo enviado
         //Retornar los IDs de la tabla EMEmail
-        public string Listado()
+        public List<int> Listado()
         {
-            var Mail = "";
+            List<int> Mail = new List<int>(); 
             try
             {
                 string connect = "server=DESKTOP-7KDBKTG\\SQLEXPRESS; database=master; integrated security=true";
                 using (SqlConnection connection = new SqlConnection(connect))
                 {
-                    
                     connection.Open();
                     SqlCommand cmd = connection.CreateCommand();
                     string consultaEmail = @"SELECT EMEmailID FROM EMEmail WHERE Enviado IS NULL or Enviado = 0 and Procesar = 1;";
                     cmd.CommandText = consultaEmail;
                     SqlDataReader ID = cmd.ExecuteReader();
-                    Console.WriteLine("IDs de Correos Faltantes");
                     while (ID.Read())
                     {
-                        int Ident = 0;
-                        Ident = +1;
-                        Mail = "EMEmailID " + Ident + ": " + ID[0];
-                        Console.WriteLine(Mail);
-
+                        Mail.Add(Convert.ToInt32(ID[0].ToString()));
+                        //Mail = "EMEmailID " + Ident + ": " + ID[0];
                     }
                     
-                    Mail = "Correos Actualizados";
                 }
 
             }
@@ -178,42 +179,6 @@ namespace CorreoMasivo
             return resultado;
         }
 
-        public string Envios()
-        {
-            var Mail = "";
-            try
-            {
-
-                string connect = "server=DESKTOP-7KDBKTG\\SQLEXPRESS; database=master; integrated security=true";
-                using (SqlConnection connection = new SqlConnection(connect))
-                {
-                    connection.Open();
-                    SqlCommand cmd = connection.CreateCommand();
-                    string consultaEmail = @"SELECT EMEmailID FROM EMEmail WHERE Enviado IS NULL or Enviado = 0 and Procesar = 1;";
-                    cmd.CommandText = consultaEmail;
-                    SqlDataReader ID = cmd.ExecuteReader();
-                    if (ID.HasRows)
-                    {
-                        var id = (int)ID[0];
-                        while (ID.Read())
-                        {
-                            Console.WriteLine("Correo enviado" + ID[0]);
-                            UtilesEmail.sendMail(UtilesEmail.getDatosDB(id));
-                        }
-                        Mail = "Correos faltantes enviados";
-                    }
-                    else
-                    {
-                        Mail = "Ya se han enviado todos los correos";
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("No existen registros para mostrar: " + ex.Message);
-            }
-            return Mail;
-        }
 
     }
 }
