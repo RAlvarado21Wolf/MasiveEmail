@@ -285,7 +285,6 @@ namespace CorreoMasivo
                     Console.WriteLine("Datos Nulos");
                 }
 
-
                 SmtpClient client = new SmtpClient(param.Smtp, 587);
                 client.Credentials = new NetworkCredential(param.CorreoOrigen, "miofqxyvyamwxudi");
                 client.EnableSsl = true;
@@ -294,7 +293,7 @@ namespace CorreoMasivo
             }
             catch (Exception ex)
             {
-                msge = ex.Message + ". Por favor verifica tu conexión a internet y que tus datos sean correctos e intenta nuevamente.";
+                msge = ex.Message;
             }
             Thread.Sleep(2000);
             return msge;
