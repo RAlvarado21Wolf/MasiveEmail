@@ -27,7 +27,8 @@
 	<body>
 		<div class="Contenedor">
 						
-			<a href="<%URLBase%>LineasCorporativas/public/Renovacion.aspx?ID=<%ID%>"><img src="cid:<%ImagenRenovacion%>" width="100%"/></a>
+			<a href="<%URLBase%>LineasCorporativas/public/Renovacion.aspx?ID=<%ID%>"></a>
+			<img src="<%ImagenRenovacion%>" width="100%"/>
 			
 		</div>
 
@@ -59,7 +60,6 @@
 	        <p><strong>Importante: Este correo y su contenido es personal, no debe compartirlo con nadie. </strong> </p>
 	        <p>Saludos,</p>
 	        <p>Equipo de IT de ASAZGUA</p>
-			<p><%{0}%>
 		</div>
 	</body>
 	<footer></footer>

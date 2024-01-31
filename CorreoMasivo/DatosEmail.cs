@@ -49,13 +49,9 @@ namespace CorreoMasivo
             get;
             set;
         }
-        public string Adjunto{
-            get;
-            set;
-        }
         
 
-        public DatosEmail(int IDEmail, string destinatario, string correoOrigen, string asunto, string cuerpo, ListDictionary replacements, string smtp, bool BodyHTML, ListDictionary attachments, ListDictionary linked, string archivo)
+        public DatosEmail(int IDEmail, string destinatario, string correoOrigen, string asunto, string cuerpo, ListDictionary replacements, string smtp, bool BodyHTML, ListDictionary attachments, ListDictionary linked)
         {
             EmailID = IDEmail;
             Destinatario = destinatario;
@@ -67,7 +63,6 @@ namespace CorreoMasivo
             bodyHtml = BodyHTML;
             ListaAdjuntos = attachments;
             ListaLinked = linked;
-            Adjunto = archivo;
         }
         public DatosEmail() {
         

@@ -10,6 +10,7 @@ using System.Threading;
 using System.IO;
 using System.Web;
 using System.Linq;
+using System.Security.Cryptography;
 
 namespace CorreoMasivo
 {
@@ -33,7 +34,6 @@ namespace CorreoMasivo
             else {
 
                 UpdateEstadoEmail(pdatos, true, "Actualizado", 1);
-                // datos.Listado();
 
             }
             mailSend = true;
@@ -54,7 +54,6 @@ namespace CorreoMasivo
                     SqlCommand cmd = connection.CreateCommand();
                     string consultaVerificacion = @"SELECT E.ToAddress, E.FromAddress, E.Subject, E.IsBodyHtml, E.Body, E.EMEmailTemplateID, S.SmtpServerName FROM EMEmail E INNER JOIN EMSmtpServer S ON E.EMSmtpServerID = S.EMSmtpServerID Left JOIN EMEmailAttachment EA ON E.EMEmailID = EA.EMEmailID WHERE E.EMEmailID = @EMEmailID;";                   
                     cmd.CommandText = consultaVerificacion;
-                    // cmd.Parameters.Add("@EMEmailID", SqlDbType.Int).Value = EmailID;
                     cmd.Parameters.AddWithValue("@EMEmailID",EmailID);
                     SqlDataReader DE = cmd.ExecuteReader();
                     if (DE.Read()) 
@@ -117,6 +116,9 @@ namespace CorreoMasivo
                             var value = DLR.GetString(1);
                             datos.ListaLinked.Add(key, value);
                         }
+
+                        DLR.Close();
+
                     }
                 }
             }
@@ -184,6 +186,7 @@ namespace CorreoMasivo
             return Mail;
         }
 
+
         public static string sendMail(DatosEmail param)
         {
             string msge = "";
@@ -200,91 +203,38 @@ namespace CorreoMasivo
                     {
                         param.Cuerpo = param.Cuerpo.Replace(replacement.Key.ToString(), replacement.Value.ToString());
                     }
+
+                    if (param.ListaLinked != null)
+                    {
+                        foreach (DictionaryEntry linkeds in param.ListaLinked)
+                        {
+                            param.Cuerpo = param.Cuerpo.Replace(linkeds.Key.ToString(), linkeds.Value.ToString());
+                        }
+                    }
+
                 }
 
                 mail.Subject = param.Asunto;
                 mail.Body = param.Cuerpo;
                 mail.IsBodyHtml = true;
-                List<LinkedResource> lrList = new List<LinkedResource>();
-                Dictionary<string, string> replacements = new Dictionary<string, string>();
+                //List<LinkedResource> lrList = new List<LinkedResource>();
+                //Dictionary<string, string> replacements = new Dictionary<string, string>();
 
                 //Espacio de Adjuntos
-                if (param.ListaAdjuntos != null && param.ListaAdjuntos.Count > 0)
+                if (param.ListaAdjuntos != null)
                 {
-                    foreach (DictionaryEntry adjuntoEntry in param.ListaAdjuntos)
+
+                    foreach (DictionaryEntry documentos in param.ListaAdjuntos)
                     {
-                        string nombreAdjunto = adjuntoEntry.Key.ToString();
-                        string rutaArchivo = adjuntoEntry.Value.ToString();
+                        string nombreAdjunto = documentos.Key.ToString();
+                        string rutaArchivo = documentos.Value.ToString();
 
-                        if (File.Exists(rutaArchivo))
-                        {
-                            Attachment attachment = new Attachment(rutaArchivo);
-                            attachment.Name = nombreAdjunto; // Nombre que se mostrará en el correo
-                            mail.Attachments.Add(attachment);
-                        }
-                        else
-                        {
-                            Console.WriteLine($"El archivo adjunto {rutaArchivo} no existe.");
-                        }
+                        Attachment attachment = new Attachment(rutaArchivo);
+                        attachment.Name = nombreAdjunto;
+                        mail.Attachments.Add(attachment);
                     }
+
                 }
-                else
-                {
-                    Console.WriteLine("Revision necesaria");
-                }
-                // Espacio de LinkResources
-                if (param.ListaLinked != null && param.ListaLinked.Count > 0)
-                {
-                    foreach (DictionaryEntry linkedEntry in param.ListaLinked)
-                    {
-                        string llave = linkedEntry.Key?.ToString();
-                        string ruta = linkedEntry.Value?.ToString();
-
-                        try
-                        {
-                            if (!string.IsNullOrEmpty(llave) && !string.IsNullOrEmpty(ruta) && File.Exists(ruta))
-                            {
-                                string fullPath = Path.GetFullPath(ruta);
-
-                                if (!string.IsNullOrEmpty(fullPath))
-                                {
-                                    string mimeType = MimeMapping.GetMimeMapping(fullPath);
-                                    LinkedResource lr = new LinkedResource(fullPath, mimeType);
-                                    lr.ContentId = Guid.NewGuid().ToString();
-                                    string body = File.ReadAllText(fullPath);
-
-                                    lrList.Add(lr);
-                                    replacements.Add(string.Format("<%{0}%>", llave), lr.ContentId);
-
-                                    AlternateView av = AlternateView.CreateAlternateViewFromString(mail.Body, null, "text/html");
-                                    av.LinkedResources.Add(lr);
-                                    mail.AlternateViews.Add(av);
-                                }
-                                else
-                                {
-                                    throw new Exception("Error: La ruta del archivo es nula o vacía.");
-                                }
-                            }
-                            else
-                            {
-                                throw new Exception("Error: La llave o la ruta son nulas o vacías, o el archivo no existe.");
-                            }
-                        }
-                        catch (FileNotFoundException ex)
-                        {
-                            Console.WriteLine($"Error: {ex.Message}");
-                        }
-                        catch (Exception ex)
-                        {
-                            Console.WriteLine($"Error al procesar el archivo adjunto {llave}: {ex.Message}");
-                        }
-                    }
-                }
-                else
-                {
-                    Console.WriteLine("Datos Nulos");
-                }
-
                 SmtpClient client = new SmtpClient(param.Smtp, 587);
                 client.Credentials = new NetworkCredential(param.CorreoOrigen, "miofqxyvyamwxudi");
                 client.EnableSsl = true;
@@ -298,7 +248,6 @@ namespace CorreoMasivo
             Thread.Sleep(2000);
             return msge;
         }
-
     }
 
 }
