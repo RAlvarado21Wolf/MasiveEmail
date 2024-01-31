@@ -7,10 +7,7 @@ using System.Net;
 using System.Net.Mail;
 using System.ComponentModel;
 using System.Threading;
-using System.IO;
-using System.Web;
-using System.Linq;
-using System.Security.Cryptography;
+using System.Configuration;
 
 namespace CorreoMasivo
 {
@@ -34,9 +31,9 @@ namespace CorreoMasivo
             else {
 
                 UpdateEstadoEmail(pdatos, true, "Actualizado", 1);
-
+                mailSend = true;
             }
-            mailSend = true;
+            
 
         }
 
@@ -186,13 +183,13 @@ namespace CorreoMasivo
             return Mail;
         }
 
-
-        public static string sendMail(DatosEmail param)
+        //Funcional NO TOCAR
+        /*public static string sendMail(DatosEmail param)
         {
             string msge = "";
             try
             {
-
+                 
                 MailMessage mail = new MailMessage();
                 mail.From = new MailAddress(param.CorreoOrigen, param.Asunto);
                 mail.To.Add(param.Destinatario);
@@ -203,22 +200,19 @@ namespace CorreoMasivo
                     {
                         param.Cuerpo = param.Cuerpo.Replace(replacement.Key.ToString(), replacement.Value.ToString());
                     }
+                }
 
-                    if (param.ListaLinked != null)
+                if (param.ListaLinked != null)
+                {
+                    foreach (DictionaryEntry linkeds in param.ListaLinked)
                     {
-                        foreach (DictionaryEntry linkeds in param.ListaLinked)
-                        {
-                            param.Cuerpo = param.Cuerpo.Replace(linkeds.Key.ToString(), linkeds.Value.ToString());
-                        }
+                        param.Cuerpo = param.Cuerpo.Replace(linkeds.Key.ToString(), linkeds.Value.ToString());
                     }
-
                 }
 
                 mail.Subject = param.Asunto;
                 mail.Body = param.Cuerpo;
                 mail.IsBodyHtml = true;
-                //List<LinkedResource> lrList = new List<LinkedResource>();
-                //Dictionary<string, string> replacements = new Dictionary<string, string>();
 
                 //Espacio de Adjuntos
                 if (param.ListaAdjuntos != null)
@@ -247,9 +241,83 @@ namespace CorreoMasivo
             }
             Thread.Sleep(2000);
             return msge;
+        }*/
+
+        public static MailMessage CreateMailMessage(DatosEmail param)
+        {
+            MailMessage mailMessage = new MailMessage();
+            mailMessage.To.Add(param.Destinatario);
+            mailMessage.From = new MailAddress(param.CorreoOrigen);
+
+            if (param.ListaPalabras != null)
+            {
+                foreach (DictionaryEntry replacement in param.ListaPalabras)
+                {
+                    string llave = replacement.Key.ToString();
+                    string valor = replacement.Value.ToString();
+                    param.Cuerpo = param.Cuerpo.Replace(llave, valor);
+                }
+            }
+
+            mailMessage.Body = param.Cuerpo;
+
+            return mailMessage;
         }
+
+        public static string sendMail(DatosEmail param)
+        {
+            string msge = "";
+            
+            try
+            {
+                MailMessage mail = CreateMailMessage(param);
+
+                if (param.ListaLinked != null)
+                {
+                    foreach (DictionaryEntry linkeds in param.ListaLinked)
+                    {
+                        param.Cuerpo = param.Cuerpo.Replace(linkeds.Key.ToString(), linkeds.Value.ToString());
+                    }
+                }
+
+                mail.Subject = param.Asunto;
+                mail.Body = param.Cuerpo;
+                mail.IsBodyHtml = true;
+
+                //Espacio de Adjuntos
+                if (param.ListaAdjuntos != null)
+                {
+
+                    foreach (DictionaryEntry documentos in param.ListaAdjuntos)
+                    {
+                        string nombreAdjunto = documentos.Key.ToString();
+                        string rutaArchivo = documentos.Value.ToString();
+
+                        Attachment attachment = new Attachment(rutaArchivo);
+                        attachment.Name = nombreAdjunto;
+                        mail.Attachments.Add(attachment);
+                    }
+
+                }
+                SmtpClient client = new SmtpClient(param.Smtp, 587);
+                client.Credentials = new NetworkCredential(param.CorreoOrigen, "miofqxyvyamwxudi");
+                client.EnableSsl = true;
+                client.SendCompleted += (sender, e) => SendCompletedCallback(sender, e, param.EmailID);
+
+
+                client.SendAsync(mail, "Mensaje");
+            }
+            catch (Exception ex)
+            {
+                msge = ex.Message;
+            }
+            Thread.Sleep(2000);
+            return msge;
+        }
+
     }
 
+    
 }
 
 
