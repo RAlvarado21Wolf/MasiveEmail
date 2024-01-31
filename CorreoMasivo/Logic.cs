@@ -85,5 +85,65 @@ namespace EnviarMail
         {
             Console.WriteLine("Revision necesaria");
         }*/
+
+        //Funcional NO TOCAR
+        /*public static string sendMail(DatosEmail param)
+        {
+            string msge = "";
+            try
+            {
+                 
+                MailMessage mail = new MailMessage();
+                mail.From = new MailAddress(param.CorreoOrigen, param.Asunto);
+                mail.To.Add(param.Destinatario);
+
+                if (param.ListaPalabras != null)
+                {
+                    foreach (DictionaryEntry replacement in param.ListaPalabras)
+                    {
+                        param.Cuerpo = param.Cuerpo.Replace(replacement.Key.ToString(), replacement.Value.ToString());
+                    }
+                }
+
+                if (param.ListaLinked != null)
+                {
+                    foreach (DictionaryEntry linkeds in param.ListaLinked)
+                    {
+                        param.Cuerpo = param.Cuerpo.Replace(linkeds.Key.ToString(), linkeds.Value.ToString());
+                    }
+                }
+
+                mail.Subject = param.Asunto;
+                mail.Body = param.Cuerpo;
+                mail.IsBodyHtml = true;
+
+                //Espacio de Adjuntos
+                if (param.ListaAdjuntos != null)
+                {
+
+                    foreach (DictionaryEntry documentos in param.ListaAdjuntos)
+                    {
+                        string nombreAdjunto = documentos.Key.ToString();
+                        string rutaArchivo = documentos.Value.ToString();
+
+                        Attachment attachment = new Attachment(rutaArchivo);
+                        attachment.Name = nombreAdjunto;
+                        mail.Attachments.Add(attachment);
+                    }
+
+                }
+                SmtpClient client = new SmtpClient(param.Smtp, 587);
+                client.Credentials = new NetworkCredential(param.CorreoOrigen, "miofqxyvyamwxudi");
+                client.EnableSsl = true;
+                client.SendCompleted += (sender, e) => SendCompletedCallback(sender, e, param.EmailID);
+                client.SendAsync(mail, "Mensaje");
+            }
+            catch (Exception ex)
+            {
+                msge = ex.Message;
+            }
+            Thread.Sleep(2000);
+            return msge;
+        }*/
     }
 }
