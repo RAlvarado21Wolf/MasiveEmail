@@ -7,19 +7,24 @@ using System.Net;
 using System.Net.Mail;
 using System.ComponentModel;
 using System.Threading;
-using System.Configuration;
+using System.Web;
+using System.Web.UI.WebControls;
+using System.Windows.Forms;
+using Control = System.Web.UI.Control;
 
 namespace CorreoMasivo
 {
     public class UtilesEmail
     {
-        private static void SendCompletedCallback(object sender, AsyncCompletedEventArgs e, int pdatos) {
-            
+        private static void SendCompletedCallback(object sender, AsyncCompletedEventArgs e, int pdatos)
+        {
+
             bool mailSend;
             DatosEmail datos = new DatosEmail();
             String token = (String)e.UserState;
 
-            if (e.Cancelled) {
+            if (e.Cancelled)
+            {
                 Console.WriteLine("[{0}] Send canceled.", token);
                 UpdateEstadoEmail(pdatos, false, token, 0);
             }
@@ -28,52 +33,55 @@ namespace CorreoMasivo
                 Console.WriteLine("[{0}] {1}", token, e.Error.ToString());
                 UpdateEstadoEmail(pdatos, false, e.Error.ToString(), 0);
             }
-            else {
+            else
+            {
 
                 UpdateEstadoEmail(pdatos, true, "Actualizado", 1);
                 mailSend = true;
             }
-            
+
 
         }
 
-        public static DatosEmail getDatosDB(int EmailID) {
+        public static DatosEmail getDatosDB(int EmailID)
+        {
             DatosEmail datos = new DatosEmail();
             try
             {
                 string connect = "server=DESKTOP-7KDBKTG\\SQLEXPRESS; database=master; integrated security=true";
                 using (SqlConnection connection = new SqlConnection(connect))
                 {
-                    Int32 IDTemplate;
+                    int IDTemplate;
                     // Conexion Aperturada
                     connection.Open();
                     //Parametros de llamada y envio de Email
                     SqlCommand cmd = connection.CreateCommand();
-                    string consultaVerificacion = @"SELECT E.ToAddress, E.FromAddress, E.Subject, E.IsBodyHtml, E.Body, E.EMEmailTemplateID, S.SmtpServerName FROM EMEmail E INNER JOIN EMSmtpServer S ON E.EMSmtpServerID = S.EMSmtpServerID Left JOIN EMEmailAttachment EA ON E.EMEmailID = EA.EMEmailID WHERE E.EMEmailID = @EMEmailID;";                   
+                    string consultaVerificacion = @"SELECT E.ToAddress, E.FromAddress, E.Subject, E.IsBodyHtml, E.Body, E.EMEmailTemplateID, S.SmtpServerName FROM EMEmail E INNER JOIN EMSmtpServer S ON E.EMSmtpServerID = S.EMSmtpServerID Left JOIN EMEmailAttachment EA ON E.EMEmailID = EA.EMEmailID WHERE E.EMEmailID = @EMEmailID;";
                     cmd.CommandText = consultaVerificacion;
-                    cmd.Parameters.AddWithValue("@EMEmailID",EmailID);
+                    cmd.Parameters.AddWithValue("@EMEmailID", EmailID);
                     SqlDataReader DE = cmd.ExecuteReader();
-                    if (DE.Read()) 
+                    if (DE.Read())
                     {
 
-                        datos.EmailID = EmailID; 
+                        datos.EmailID = EmailID;
                         datos.Destinatario = DE.IsDBNull(0) ? "" : DE.GetString(0);
                         datos.CorreoOrigen = DE.IsDBNull(1) ? "" : DE.GetString(1);
                         datos.Asunto = DE.IsDBNull(2) ? "" : DE.GetString(2);
                         datos.bodyHtml = DE.IsDBNull(3) ? false : DE.GetBoolean(3);
-                        datos.Cuerpo = DE.IsDBNull(4) ? "" :  DE.GetString(4);
+                        datos.Cuerpo = DE.IsDBNull(4) ? "" : DE.GetString(4);
                         IDTemplate = DE.IsDBNull(5) ? 0 : DE.GetInt32(5);
                         datos.Smtp = DE.IsDBNull(6) ? "" : DE.GetString(6);
 
                         DE.Close();
 
-                        string consultaReplacement =   @"SELECT ReplacementKey, ReplacementValue FROM EMEmailTemplateReplacement WHERE EMEmailTemplateID = @EMEmailTemplateID2 AND EMEmailID = @EMEmailID2;";
+                        string consultaReplacement = @"SELECT ReplacementKey, ReplacementValue FROM EMEmailTemplateReplacement WHERE EMEmailTemplateID = @EMEmailTemplateID2 AND EMEmailID = @EMEmailID2;";
                         cmd.CommandText = consultaReplacement;
                         cmd.Parameters.AddWithValue("@EMEmailTemplateID2", IDTemplate);
                         cmd.Parameters.AddWithValue("@EMEmailID2", EmailID);
                         SqlDataReader DR = cmd.ExecuteReader();
                         datos.ListaPalabras = new ListDictionary();
-                        while (DR.Read()){
+                        while (DR.Read())
+                        {
 
                             Console.WriteLine(DR[0] + ", " + DR[1]);
                             var key = DR.GetString(0);
@@ -89,7 +97,8 @@ namespace CorreoMasivo
                         cmd.Parameters.AddWithValue("@EMEmailID3", EmailID);
                         SqlDataReader DA = cmd.ExecuteReader();
                         datos.ListaAdjuntos = new ListDictionary();
-                        while (DA.Read()) {
+                        while (DA.Read())
+                        {
 
                             Console.WriteLine(DA[0] + ", " + DA[1]);
                             var key = DA.GetString(0);
@@ -111,8 +120,8 @@ namespace CorreoMasivo
                             Console.WriteLine(DLR[0] + ", " + DLR[1]);
                             var key = DLR.GetString(0);
                             var value = DLR.GetString(1);
-                            //datos.ListaLinked.Add(key, value);
-                            datos.ListaPalabras.Add(key, value);
+                            datos.ListaLinked.Add(key, value);
+                            //datos.ListaPalabras.Add(key, value);
                         }
 
                         DLR.Close();
@@ -184,42 +193,56 @@ namespace CorreoMasivo
             return Mail;
         }
 
-        public static MailMessage CreateMailMessage(DatosEmail param)
+        public static MailMessage CreateMailMessage(DatosEmail datosEmail)
         {
-            MailMessage mailMessage = new MailMessage();
-            mailMessage.To.Add(param.Destinatario);
-            mailMessage.From = new MailAddress(param.CorreoOrigen);
-
-            if (param.ListaPalabras != null)
+            try
             {
-                foreach (DictionaryEntry replacement in param.ListaPalabras)
+                MailDefinition md = new MailDefinition();
+                md.IsBodyHtml = true;
+                md.From = datosEmail.CorreoOrigen;
+                Control control = HttpContext.Current != null ? null : new Control();
+                if (datosEmail.Destinatario != null && datosEmail.ListaPalabras != null && control != null)
                 {
-                    string llave = replacement.Key.ToString();
-                    string valor = replacement.Value.ToString();
-                    param.Cuerpo = param.Cuerpo.Replace(llave, valor);
+                    MailMessage mailMessage = md.CreateMailMessage(datosEmail.Destinatario, datosEmail.ListaPalabras, control);
+                    mailMessage.Body = datosEmail.Cuerpo;
+                    mailMessage.Subject = datosEmail.Asunto;
+                    if (!string.IsNullOrEmpty(mailMessage.Body))
+                    {
+                        foreach (DictionaryEntry replacement in datosEmail.ListaPalabras)
+                        {
+                            mailMessage.Body = mailMessage.Body.Replace(replacement.Key.ToString(), replacement.Value.ToString());
+                        }
+
+                        foreach (DictionaryEntry imagen in datosEmail.ListaLinked) {
+
+                            mailMessage.Body = mailMessage.Body.Replace(imagen.Key.ToString(), imagen.Value.ToString());
+
+                        }
+                        if (datosEmail.ListaAdjuntos != null)
+                        {
+                            foreach (DictionaryEntry documentos in datosEmail.ListaAdjuntos)
+                            {
+                                Attachment attachment = new Attachment(documentos.Value.ToString());
+                                attachment.Name = documentos.Key.ToString();
+                                mailMessage.Attachments.Add(attachment);
+                            }
+                        }
+                    }
+                    return mailMessage;
+                }
+                else
+                {
+                    MessageBox.Show("Al menos uno de los valores requeridos es nulo.");
+                    return new MailMessage();
                 }
             }
-            mailMessage.Body = param.Cuerpo;
-
-            if (param.ListaAdjuntos != null)
+            catch (Exception ex)
             {
-                foreach (DictionaryEntry documentos in param.ListaAdjuntos)
-                {
-                    string nombreAdjunto = documentos.Key.ToString();
-                    string rutaArchivo = documentos.Value.ToString();
-
-                    Attachment attachment = new Attachment(rutaArchivo);
-                    attachment.Name = nombreAdjunto;
-                    mailMessage.Attachments.Add(attachment);
-                }
+                Console.WriteLine(ex);
+                return new MailMessage();
             }
-
-            mailMessage.Subject = param.Asunto;
-            mailMessage.Body = param.Cuerpo;
-            mailMessage.IsBodyHtml = true;
-
-            return mailMessage;
         }
+
 
         public static string sendMail(DatosEmail param)
         {
@@ -243,9 +266,8 @@ namespace CorreoMasivo
 
     }
 
-    
-}
 
+}
 
 
 
