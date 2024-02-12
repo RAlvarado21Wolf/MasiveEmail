@@ -11,6 +11,8 @@ using System.Web;
 using System.Web.UI.WebControls;
 using System.Windows.Forms;
 using Control = System.Web.UI.Control;
+using System.Net.Http;
+using System.IO;
 
 namespace CorreoMasivo
 {
@@ -121,7 +123,6 @@ namespace CorreoMasivo
                             var key = DLR.GetString(0);
                             var value = DLR.GetString(1);
                             datos.ListaLinked.Add(key, value);
-                            //datos.ListaPalabras.Add(key, value);
                         }
 
                         DLR.Close();
@@ -213,11 +214,32 @@ namespace CorreoMasivo
                             mailMessage.Body = mailMessage.Body.Replace(replacement.Key.ToString(), replacement.Value.ToString());
                         }
 
-                        foreach (DictionaryEntry imagen in datosEmail.ListaLinked) {
+                        AlternateView htmlView = AlternateView.CreateAlternateViewFromString(mailMessage.Body, null, "text/html");
 
-                            mailMessage.Body = mailMessage.Body.Replace(imagen.Key.ToString(), imagen.Value.ToString());
+                        if (datosEmail.ListaLinked != null)
+                        {
+                            foreach (DictionaryEntry linkedResource in datosEmail.ListaLinked)
+                            {
+                                string key = linkedResource.Key.ToString();
+                                string imagePath = linkedResource.Value.ToString(); 
 
+                                if (!string.IsNullOrEmpty(imagePath) && File.Exists(imagePath))
+                                {
+                                    LinkedResource imageResource = new LinkedResource(imagePath);
+                                    imageResource.ContentId = key;
+                                    imageResource.TransferEncoding = System.Net.Mime.TransferEncoding.Base64;
+
+                                    htmlView.LinkedResources.Add(imageResource);
+                                }
+                                else
+                                {
+                                    Console.WriteLine($"La ruta de la imagen '{imagePath}' no es válida o el archivo no existe.");
+                                }
+                            }
                         }
+
+                        mailMessage.AlternateViews.Add(htmlView);
+
                         if (datosEmail.ListaAdjuntos != null)
                         {
                             foreach (DictionaryEntry documentos in datosEmail.ListaAdjuntos)
